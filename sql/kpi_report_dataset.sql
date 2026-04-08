@@ -1,3 +1,14 @@
+/* 
+Problem:
+Calculate KPIs with multiple metrics for employees and departments. 
+The KPI period is defined from the 21st of each month to the 20th of the following month. The results are visualized on Power BI dashboards.
+
+Solution:
+Due to the large number of metrics, performing calculations directly in Power BI would be highly complex and inefficient. 
+Therefore, a stored procedure was developed to pre-calculate and insert data daily into a dataset table. 
+This table serves as the data source for Power BI reports. Additionally, a scheduled event was set up in MySQL to automatically execute the calculations at 8:00 AM every day.
+*/
+
 CREATE DEFINER=`abc`@`52.211.32.32` PROCEDURE `analysis_db`.`kpi_report_dataset`(in ngay DATE)
 BEGIN
 	DECLARE v_ngay DATE;
@@ -834,10 +845,10 @@ BEGIN
 	GROUP BY t1.vung, t1.department_code, t2.`user` ;
 
 	DELETE dst
-	FROM data_analysis.dataset_sos_kpi_report dst
+	FROM data_analysis.kpi_report_dataset dst
 	WHERE dst.ngay = v_ngay;
 
-    INSERT INTO data_analysis.dataset_sos_kpi_report(ngay ,thang_bao_cao, vung, department_code, employee_code, ma_chi_tieu, ten_chi_tieu, value,
+    INSERT INTO data_analysis.kpi_report_dataset(ngay ,thang_bao_cao, vung, department_code, employee_code, ma_chi_tieu, ten_chi_tieu, value,
     	created_date)
 	SELECT v_ngay, report_month,
 		CASE WHEN vung = 'MN' THEN 'Miền Nam'
