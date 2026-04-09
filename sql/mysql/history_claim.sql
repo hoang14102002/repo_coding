@@ -1,12 +1,20 @@
 /*
-A dataset that tracks historical changes and updates of a claim record from the time it is created in the system until it is approved.
+Problem:
+I need to create a table to track the change history of claim records. 
+Each record contains a lot of related information, and if even a single piece of information changes, it should be inserted into the dataset table with the date of the change recorded.
+
+Solution:
+I wrote a procedure that runs daily to check whether any claim has changed compared to its most recent entry in the dataset table. 
+If there is a change, a new record is inserted; if not, nothing is inserted.
 */
+
 CREATE DEFINER=`hoangdm`@`162.32.16.53` PROCEDURE `analysis_db`.`claim_history`(in running_date DATE)
 BEGIN
-	
+	-- HoangDM: this procedure runs daily with a date value of T-1 (yesterday).
 	DECLARE v_ngay DATE;
 	SET v_ngay = IFNULL(running_date, CURDATE() - INTERVAL 1 DAY);
-	
+
+	-- HoangDM: I created temporary tables to retrieve the data needed throughout the procedure:
 	DROP TEMPORARY TABLE IF EXISTS tmp_claim_by_clause;
 	CREATE TEMPORARY TABLE tmp_claim_by_clause AS
 	SELECT t1.unit_code,t1.claim_id,t1.object_id,
@@ -16,7 +24,8 @@ BEGIN
  	WHERE t2.claim_id  BETWEEN '20251201000000' AND  '20260228999999' 
 	  AND v_ngay BETWEEN t2.eff_date AND t2.end_date 
   	GROUP BY t1.unit_code,t1.claim_id,t1.object_id;
-		
+
+	-- HoangDM: This is temporary table containing  the results:
 	DROP TEMPORARY TABLE IF EXISTS tmp_raw_data;
 	CREATE TEMPORARY TABLE tmp_raw_data (
 	    fk_date DATE,
@@ -108,6 +117,7 @@ BEGIN
 	    row_hash CHAR(32)
 	);
 
+	-- HoangDM: First, i insert serveral fields i can calculate now into tmp_raw_data:
 	INSERT INTO tmp_raw_data(fk_date, claim_id, claim_no, category,policy_id, policy_number, certificate_id,certificate,
 	  	business_type_code, region,
 		unit_code, manage_unit_code, manage_unit_name,
@@ -202,9 +212,11 @@ BEGIN
 	WHERE t1.claim_id  BETWEEN '20251201000000' AND  '20260228999999'
 		AND v_ngay BETWEEN t1.eff_date AND t1.end_date;
 
+	--HoangDM: I create indexs for temp table tmp_raw_data:
 	CREATE INDEX idx_tmp_raw_data ON tmp_raw_data(manage_unit_code, call_center_id);
 	CREATE INDEX idx_tmp_raw_data2 ON tmp_raw_data(claim_id,unit_code);
-	-- HoangDM: lay lich su uoc:
+
+	--HoangDM: Continue calculating the remaining data fields.
 	DROP TEMPORARY TABLE IF EXISTS tmp_estimate_amount;
 	CREATE TEMPORARY TABLE tmp_estimate_amount
 	(
@@ -419,10 +431,13 @@ BEGIN
 	SET t1.custid_tong = t2.custid_tong
 	WHERE 1=1;
 
+	-- HoangDM: I deleted the data at date T-1 in the final physical results table (data_analysis.history_claim) so that i could overwrite it.
 	DELETE dst
 	FROM data_analysis.history_claim dst
 	WHERE dst.fk_date = v_ngay;
 	/*---------------------------------------------------------------------------------------------------------------*/
+	-- HoangDM: Because I only insert records that have changed since the most recent date into the final results table, I'm using the row_hash field for comparison.
+	-- I use an MD5 hash function that aggregates all data fields and compares it to the most recent date to see if it differs, instead of having to compare all data fields.
 	UPDATE tmp_raw_data  
 	SET row_hash = 
 	MD5(CONCAT_WS('|',
@@ -488,5 +503,4 @@ BEGIN
 			AND r.row_hash = d.row_hash
 			AND d.fk_date < v_ngay
 	);
-
 END
