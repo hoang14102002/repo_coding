@@ -29,7 +29,7 @@ BEGIN
 	DROP TEMPORARY TABLE IF EXISTS tmp_dept_amount;
 	DROP TEMPORARY TABLE IF EXISTS tmp_vung_amount;
 
-	DROP TEMPORARY TABLE IF EXISTS tmp_sum_tp; -- bang tinh tong cac chi tieu cho truong phong
+	DROP TEMPORARY TABLE IF EXISTS tmp_sum_tp; 
 	DROP TEMPORARY TABLE IF EXISTS tmp_tp_exist;
 	
 	SET v_ngay = IFNULL(ngay, CURDATE() - INTERVAL 1 DAY);
@@ -51,7 +51,7 @@ BEGIN
         ELSE
             DATE_FORMAT(v_ngay, '%Y-%m-20')
     END;
-
+-- HoangDM: I created temporary tables to retrieve the data needed throughout the procedure:
 -- 	/*----------------------------------------------------------------------------------------------------------------*/
 	CREATE TEMPORARY TABLE tmp_vung AS
 	SELECT department_code, ct_code
@@ -209,6 +209,7 @@ BEGIN
 	) t1
 	WHERE t1.rn = 1;
 	/*----------------------------------------------------------------------------------------------------------------*/
+	-- HoangDM: Some metrics only need to be calculated on the first and last days of the KPI period.
 	IF DAY(v_ngay) IN (20, 21) THEN	
 		DROP TEMPORARY TABLE IF EXISTS tmp_estimate_amount;
 	
@@ -305,6 +306,7 @@ BEGIN
 		WHERE t1.roww = 1 AND t1.vung IS NOT NULL;
 	END IF;
 	/*----------------------------------------------------------------------------------------------------------------*/
+	-- HoangDM: tmp_result is temporary table contains final result
 	CREATE TEMPORARY TABLE tmp_result (
 	    vung VARCHAR(100),
 	    department_code VARCHAR(100),
@@ -603,7 +605,8 @@ BEGIN
 		AND t1.business_type_code = 'XO.4.1.1'
 		AND t2.deductible_quantity > 0
 	GROUP BY t1.vung, t1.department_code, t1.employee_code;
-	
+
+	-- HoangDM: The indicators need to be calculated on the first day of the period.
 	IF DAY(v_ngay) IN (21) THEN
 		-- GD: ước hsbt ton dau ky 
 		INSERT INTO tmp_result (vung, department_code, employee_code, ma_chi_tieu, ten_chi_tieu, value)
@@ -612,7 +615,8 @@ BEGIN
 		FROM tmp_estimate_amount_result t1
 		GROUP BY t1.vung, t1.department_code, t1.employee_code;
 	END IF;
-
+	
+	-- HoangDM: The indicators need to be calculated on the last day of the period.
 	IF DAY(v_ngay) IN (20) THEN
 		-- 	GD: uoc cuoi ky:
 		INSERT INTO tmp_result(vung, department_code, employee_code, ma_chi_tieu, ten_chi_tieu, value)
@@ -769,7 +773,7 @@ BEGIN
 		AND (t1.ngay_validate > CONCAT(v_ngay, ' 17:00:00') OR t1.ngay_validate IS NULL)
 	GROUP BY t1.vung,t1.department_code,t1.validate_user;
 
-	-- tinh cac chi tieu cua truong phong:
+	-- HoangDM: Department heads are calculated differently; their number will be the number of all members in the department, including themselves.
 	CREATE TEMPORARY TABLE tmp_sum_tp AS 
 	SELECT t2.department_code,MAX(t3.ct_code) AS vung,  
 		t1.ma_chi_tieu , MAX(t1.ten_chi_tieu) as ten_chi_tieu,  SUM(t1.value) as value
@@ -792,13 +796,15 @@ BEGIN
 	WHERE t1.ma_chi_tieu IN ('GD_HSBT_ton_dau_ky','GD_HSBT_phat_sinh','GD_ton_lau_lv1','GD_ton_lau_lv2'
 		,'GD_ton_lau_lv3','GD_ton_lau_lv4','GD_ton_lau_lv5','GD_ton_lau_lv6','GD_ton_lau_lv7','GD_ton_lau_lv8','GD_GT_HSBT_ton_dau_ky'
 		,'GD_GT_HSBT_ton_cuoi_ky','GD_mo_sau_2_ngay', 'GD_HSBT_dgq');
-		
+
+	-- HoangDM: in the data_analysis.dim_sos_employee table, i have field vi_tri to mark who is department head.
 	INSERT INTO tmp_result(vung, department_code, employee_code, ma_chi_tieu, ten_chi_tieu, value)
 	SELECT t1.vung, t1.department_code, 
 		t2.employee_code, t1.ma_chi_tieu , t1.ten_chi_tieu, t1.value
 	FROM tmp_sum_tp t1
 		LEFT JOIN data_analysis.dim_sos_employee t2 ON t1.department_code = t2.department_code AND t2.vi_tri  = 'TP';
-	
+
+	-- HoangDM: several metrics need to calculate total before use it in the power bi, so i included it in the procedure.
 	-- chi tieu vizualize:
 	INSERT INTO tmp_result(vung, department_code, employee_code, ma_chi_tieu, ten_chi_tieu, value)
 	SELECT t1.vung, t1.department_code, t2.`user` ,'GD_so_ngay_mo_hs_sau_call' AS ma_chi_tieu,
@@ -844,10 +850,12 @@ BEGIN
 		AND DATE(t1.claim_approved_date) >= v_ngay 
 	GROUP BY t1.vung, t1.department_code, t2.`user` ;
 
+	-- HoangDM: I deleted the data at date T-1 in the final physical results table (data_analysis.history_claim) so that i could overwrite it.
 	DELETE dst
 	FROM data_analysis.kpi_report_dataset dst
 	WHERE dst.ngay = v_ngay;
 
+	-- HoangDM: I insert data into dataset table (data_analysis.kpi_report_dataset) again, and i can use data in dataset table to build a dashboard by PowerBI
     INSERT INTO data_analysis.kpi_report_dataset(ngay ,thang_bao_cao, vung, department_code, employee_code, ma_chi_tieu, ten_chi_tieu, value,
     	created_date)
 	SELECT v_ngay, report_month,
