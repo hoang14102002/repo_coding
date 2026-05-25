@@ -1,5 +1,5 @@
 # Write your MySQL query statement below
-
+# Write your MySQL query statement below
     with temp as 
     (
         select *, id - row_number() over (order by id) as grp
