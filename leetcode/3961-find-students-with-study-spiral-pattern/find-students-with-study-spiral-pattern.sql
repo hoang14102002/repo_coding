@@ -1,4 +1,3 @@
-# Write your MySQL query statement below
 with temp as 
 (
     select t1.student_id, t1.subject, t1.session_date, t1.hours_studied,
