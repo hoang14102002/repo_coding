@@ -309,7 +309,7 @@ BEGIN
 	SELECT t1.Stt, t1.RowId, @_DocCode, t1.RowId_SourceDoc, t1.DocGroup, t1.ItemId_Receipt AS ItemId
 		, t1.WarehouseId_Receipt AS WarehouseId
 		, t1.ReceiptQuantity AS Quantity9, t1.ReceiptQuantity AS Quantity, t2.Unit, t1.RollCode, ISNULL(t1.LotCode,'')
-		, @_DocDate, @_BranchCode --GioiVM 19/08/24: Fix lại
+		, @_DocDate, @_BranchCode 
 		, 1
 	FROM #Phys_Ct t1
 		LEFT OUTER JOIN dbo.B20Item t2 ON t1.ItemId_Receipt = t2.Id 
@@ -317,7 +317,7 @@ BEGIN
 	SELECT t1.Stt, t1.RowId, @_DocCode, t1.RowId_SourceDoc, t1.DocGroup, t1.ItemId_Delivery AS ItemId
 		, t1.WarehouseId_Delivery AS WarehouseId, t1.Quantity9, t1.Quantity9 AS Quantity, t2.Unit
 		, t1.RollCode, ISNULL(t1.LotCodeT5,'')
-		, @_DocDate, @_BranchCode --GioiVM 19/08/24: Fix lại
+		, @_DocDate, @_BranchCode
 		, 1
 	FROM #Phys_Ct0 t1
 		LEFT OUTER JOIN dbo.B20Item t2 ON t1.ItemId_Delivery = t2.Id 
