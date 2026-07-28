@@ -1,12 +1,9 @@
-SELECT
-    t.id,
-    CASE
-        WHEN t.p_id IS NULL THEN 'Root'
-        WHEN EXISTS (
-            SELECT 1
-            FROM Tree c
-            WHERE c.p_id = t.id
-        ) THEN 'Inner'
+SELECT id,
+
+    CASE 
+        WHEN p_id IS NULL THEN 'Root'
+        WHEN id IN (SELECT p_id FROM Tree)THEN 'Inner'
         ELSE 'Leaf'
-    END AS type
-FROM Tree t;
+        END AS type
+ FROM Tree
+		
