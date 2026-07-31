@@ -33,7 +33,7 @@ from order_in_a_cycle a
     inner join max_gap_day c on a.student_id = c.student_id
 where A.rn_first_cycle = 1
 group by a.student_id
-having count(distinct a.subject) >= 3 AND MOD(COUNT(a.subject), MAX(b.order_in_a_cycle)) = 0    
+having count(distinct a.subject) >= 3 -- AND MOD(COUNT(a.subject), MAX(b.order_in_a_cycle)) = 0    
     AND COUNT(a.subject)/MAX(b.order_in_a_cycle) >= 2
     -- nhiều hơn 3 môn và đủ vòng
 )
@@ -45,3 +45,5 @@ from study_sessions t1
     left join students t3 ON t1.student_id = t3.student_id
 group by t1.student_id
 order by count(distinct t1.subject) desc, sum(t1.hours_studied ) desc
+-- select * from 
+-- order_in_a_cycle
